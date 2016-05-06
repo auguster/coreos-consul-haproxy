@@ -1,0 +1,106 @@
+#cloud-config
+hostname: "host.example.com" #<- change here !
+
+ssh_authorized_keys:
+ - #your ssh key here #<- change here !
+
+coreos:
+  update:
+    reboot-strategy: best-effort
+  etcd2:
+    name: host
+    discovery-srv: example.com #<- change here !
+    initial-cluster-state: existing
+    initial-advertise-peer-urls: http://host.example.com:2380 #<- change here !
+    advertise-client-urls: http://host.example.com:2379 #<- change here !
+    listen-client-urls: "http://0.0.0.0:2379,http://0.0.0.0:4001"
+    listen-peer-urls: http://0.0.0.0:2380
+    heartbeat-interval: 500
+    election-timeout: 5000
+  units:
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
+    - name: data.mount
+      command: start
+      content: |
+        [Mount]
+        What=data.example.com:/data #<- change here !
+        Where=/data
+        Type=nfs
+    - name: settimezone.service
+      command: start
+      content: |
+        [Unit]
+        Description=Set the time zone
+
+        [Service]
+        ExecStart=/usr/bin/timedatectl set-timezone Europe/Paris
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: consul.service
+      command: start
+      content: |
+        [Unit]
+        Description=Consul
+        Requires=docker.service
+        After=docker.service
+
+        [Service]
+        EnvironmentFile=/etc/environment
+        Environment=CONTAINER=consul
+        Environment=IMAGE=progrium/consul
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+        ExecStart=/usr/bin/docker run --name ${CONTAINER} --net host ${IMAGE} -retry-join example.com -advertise ${COREOS_PRIVATE_IPV4} -server #<- change here !
+        ExecStartPost=/bin/sleep 15
+        ExecStop=/usr/bin/docker stop ${CONTAINER}
+        ExecStop=/usr/bin/docker rm ${CONTAINER}
+        Restart=always
+        RestartSec=10
+    - name: registrator.service
+      command: start
+      content: |
+        [Unit]
+        Description=Consul registrator service
+        Requires=docker.service consul.service
+        After=consul.service
+        PartOf=consul.service
+      
+        [Service]
+        Environment=CONTAINER=registrator
+        Environment=IMAGE=gliderlabs/registrator
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+        ExecStart=/usr/bin/docker run --net host --name ${CONTAINER} -v /var/run/docker.sock:/tmp/docker.sock ${IMAGE} consul://127.0.0.1:8500
+        ExecStop=/usr/bin/docker stop ${CONTAINER}
+        ExecStop=/usr/bin/docker rm ${CONTAINER}
+        Restart=always
+        RestartSec=10
+    - name: haproxy.service
+      command: start
+      content: |
+        [Unit]
+        Description=Haproxy service using consul
+        Requires=docker.service consul.service
+        After=consul.service
+        PartOf=consul.service
+        RequiresMountsFor=/data
+        
+        [Service]
+        Environment=CONTAINER=haproxy
+        Environment=IMAGE=asteris/haproxy-consul
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+        ExecStart=/usr/bin/docker run --name ${CONTAINER} --net host -v /data/certs/mixed/:/certs:ro -v /data/data/haproxy/consul.tmpl:/consul-template/template.d/consul.tmpl -e CONSUL_CONNECT=127.0.0.1:8500 ${IMAGE}
+        ExecStop=/usr/bin/docker stop ${CONTAINER}
+        ExecStop=/usr/bin/docker rm ${CONTAINER}
+        Restart=always
+        RestartSec=10
