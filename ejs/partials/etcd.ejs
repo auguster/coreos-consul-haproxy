@@ -1,7 +1,7 @@
   etcd2:
     name: <%= host ? host : 'host' %>
     discovery-srv: <%= domain %>
-<% if (!bootstrap) { -%>    initial-cluster-state: existing<% } -%>
+    initial-cluster-state: <% if (!bootstrap) { -%>   existing<% } else { -%>new<% } %>
     initial-advertise-peer-urls: http://<%= host %><%= ddomain %>:2380
     advertise-client-urls: http://<%= host %><%= ddomain %>":2379
     listen-client-urls: "http://0.0.0.0:2379,http://0.0.0.0:4001"
