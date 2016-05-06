@@ -1,0 +1,28 @@
+[Unit]
+Description=
+Requires=docker.service data.mount
+After=docker.service data.mount
+#PartOf=
+#ReloadPropagatedFrom=
+#RequiresMountsFor=/data
+
+[Service]
+Environment=CONTAINER=#put here the container's name
+Environment=IMAGE=#put here the docker image name
+TimeoutStartSec=0
+ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+#ExecStartPre=-/usr/bin/docker login -u <username> -p <password> -e <email> <private registry url> #<- change here !
+ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+ExecStart=/usr/bin/docker run --name ${CONTAINER} ${IMAGE}
+ExecStop=/usr/bin/docker stop ${CONTAINER}
+ExecStop=/usr/bin/docker rm ${CONTAINER}
+Restart=always
+RestartSec=10
+
+[X-Fleet]
+#Conflicts=apache@*.service
+#MachineOf=owncloud_db.service
+#Global=true
+#MachineMetadata=disk=ssd
+#MachineID=sdfsfe8
