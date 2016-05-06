@@ -1,0 +1,7 @@
+    - name: data.mount
+      command: start
+      content: |
+        [Mount]
+        What=<%= dataserver %>:/data
+        Where=/data
+        Type=nfs

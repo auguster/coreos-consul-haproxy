@@ -1,0 +1,37 @@
+#cloud-config
+<%
+var host = host || 'host';
+var domain = domain || '';
+var ddomain = domain ? '.' + domain : '';
+var dataserver = dataserver ? dataserver : 'data' + ddomain;
+var timezone = timezone || 'Europe/Paris';
+
+var bootstrap = bootstrap || false;
+if (bootstrap)
+	var consul = "-bootstrap-expect " + bootstrap;
+else
+{
+	var consul = consul ? consul : domain.slice(1);
+	if (consul)
+	{
+		consul = "-retry-join " + consul;
+	}
+}
+-%>
+hostname: "<%= host %><%= ddomain %>"
+
+ssh_authorized_keys:
+  <% include partials/ssh_keys/main %>
+
+coreos:
+  update:
+    reboot-strategy: best-effort
+<% include partials/etcd %>
+  units:
+<% include partials/units/etcd2.ejs %>
+<% include partials/units/fleet.ejs %>
+<% include partials/units/data_mount.ejs %>
+<% include partials/units/timezone.ejs %>
+<% include partials/units/consul.ejs %>
+<% include partials/units/registrator.ejs %>
+<% include partials/units/haproxy.ejs %>

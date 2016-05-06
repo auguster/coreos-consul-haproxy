@@ -1,0 +1,22 @@
+    - name: consul.service
+      command: start
+      content: |
+        [Unit]
+        Description=Consul
+        Requires=docker.service
+        After=docker.service
+
+        [Service]
+        EnvironmentFile=/etc/environment
+        Environment=CONTAINER=consul
+        Environment=IMAGE=progrium/consul
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+        ExecStart=/usr/bin/docker run --name ${CONTAINER} --net host ${IMAGE} <%= consul %> -advertise ${COREOS_PRIVATE_IPV4} -server
+        ExecStartPost=/bin/sleep 15
+        ExecStop=/usr/bin/docker stop ${CONTAINER}
+        ExecStop=/usr/bin/docker rm ${CONTAINER}
+        Restart=always
+        RestartSec=10

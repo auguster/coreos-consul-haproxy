@@ -38,3 +38,25 @@ RequiresMountsFor=/data
 MachineOf=website_db.service
 ```
 In this setting the website will follow the database wherever it goes in the cluster.
+
+## cloud-config-server support
+The [ejs/](ejs) folder contains the template file for the [cloud-config-server](https://github.com/auguster/cloud-config-server). The entrypoint is the file [cfch.ejs](ejs/cfch.ejs).
+
+### Usage
+Launch cloud-config-server:
+```
+docker run --rm -it --name cloud -v $PWD/ejs:/data:ro -p 8080:8080 auguster/cloud-config-server
+```
+Then query the cloud-config file:
+```
+http://localhost:8080/cfch
+```
+
+### Parameters
+List of available parameters
+ - `host` sets the hostname of the instance (default to `host`)
+ - `domain` sets the domain of the instance, used for etcd DNS discovery (default to empty)
+ - `dataserver` sets the NFS server's address (data[.domain])
+ - `timezone` sets the timezone for the instance (default to `Europe/Paris`)
+ - `consul` sets the URL of a consul server (default to domain). Overwritten by `bootstrap`.
+ - `bootstrap` puts the instance in bootstrap mode. Choose the number of expected cluster member for bootstrap. Etcd might be broken while in bootstrap mode (not fully tested).  

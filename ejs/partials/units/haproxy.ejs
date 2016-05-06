@@ -1,0 +1,22 @@
+    - name: haproxy.service
+      command: start
+      content: |
+        [Unit]
+        Description=Haproxy service using consul
+        Requires=docker.service consul.service
+        After=consul.service
+        PartOf=consul.service
+        RequiresMountsFor=/data
+        
+        [Service]
+        Environment=CONTAINER=haproxy
+        Environment=IMAGE=asteris/haproxy-consul
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+        ExecStart=/usr/bin/docker run --name ${CONTAINER} --net host -v /data/certs/mixed/:/certs:ro -v /data/data/haproxy/consul.tmpl:/consul-template/template.d/consul.tmpl -e CONSUL_CONNECT=127.0.0.1:8500 ${IMAGE}
+        ExecStop=/usr/bin/docker stop ${CONTAINER}
+        ExecStop=/usr/bin/docker rm ${CONTAINER}
+        Restart=always
+        RestartSec=10

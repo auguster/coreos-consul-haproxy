@@ -1,0 +1,21 @@
+    - name: registrator.service
+      command: start
+      content: |
+        [Unit]
+        Description=Consul registrator service
+        Requires=docker.service consul.service
+        After=consul.service
+        PartOf=consul.service
+      
+        [Service]
+        Environment=CONTAINER=registrator
+        Environment=IMAGE=gliderlabs/registrator
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker stop ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker rm ${CONTAINER}
+        ExecStartPre=-/usr/bin/docker pull ${IMAGE}
+        ExecStart=/usr/bin/docker run --net host --name ${CONTAINER} -v /var/run/docker.sock:/tmp/docker.sock ${IMAGE} consul://127.0.0.1:8500
+        ExecStop=/usr/bin/docker stop ${CONTAINER}
+        ExecStop=/usr/bin/docker rm ${CONTAINER}
+        Restart=always
+        RestartSec=10
